@@ -1,0 +1,1 @@
+//! syntia — a lightweight toolkit for building parsers.

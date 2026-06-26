@@ -1,0 +1,14 @@
+[package]
+name = "syntia"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "A lightweight toolkit for building lexers and parsers in Rust."
+keywords = ["parser", "lexer", "parsing", "tokenizer"]
+categories = ["parsing"]
+repository = "https://github.com/egare0/syntia"
+
+[features]
+default = ["lexer", "parser"]
+lexer = []
+parser = []
