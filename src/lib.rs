@@ -17,3 +17,11 @@ pub use token::Token;
 /// [`Lex`]: lexer::Lex
 #[cfg(feature = "lexer")]
 pub mod lexer;
+
+/// Parser utilities: [`TokenStream`], [`ParseError`], and the [`Parse`] trait.
+///
+/// [`TokenStream`]: parser::TokenStream
+/// [`ParseError`]: parser::ParseError
+/// [`Parse`]: parser::Parse
+#[cfg(feature = "parser")]
+pub mod parser;
