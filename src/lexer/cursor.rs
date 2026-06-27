@@ -13,8 +13,10 @@ use crate::{Pos, Span};
 /// let source = Source::new("hello 123");
 /// let mut cursor = source.cursor();
 ///
-/// let start = cursor.offset();
-/// let word_span = cursor.eat_while(|c| c.is_alphabetic());
+/// // eat_while returns the span covering everything consumed
+/// let word_span = cursor.eat_while(|c| c.is_alphabetic()); // covers "hello"
+/// cursor.eat_whitespace();
+/// let num_span = cursor.eat_digits(10).unwrap();            // covers "123"
 /// ```
 pub struct Cursor<'src> {
     source: &'src str,
@@ -104,5 +106,87 @@ impl<'src> Cursor<'src> {
         } else {
             false
         }
+    }
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    /// Skip ASCII whitespace (space, tab, `\r`, `\n`).
+    ///
+    /// Returns the span covered. If there's no whitespace at the current
+    /// position, returns an empty span.
+    pub fn eat_whitespace(&mut self) -> Span {
+        self.eat_while(|c| c.is_whitespace())
+    }
+
+    /// Consume an identifier: starts with a letter or `_`, followed by
+    /// letters, digits, or `_`.
+    ///
+    /// Uses Unicode alphabetic/alphanumeric rules, so non-ASCII letters
+    /// are accepted. Returns `None` if the cursor isn't at the start of
+    /// a valid identifier.
+    pub fn eat_ident(&mut self) -> Option<Span> {
+        if !self.peek().is_some_and(|c| c.is_alphabetic() || c == '_') {
+            return None;
+        }
+
+        Some(self.eat_while(|c| c.is_alphanumeric() || c == '_'))
+    }
+
+    /// Consume digits in the given radix (2, 8, 10, or 16).
+    ///
+    /// Returns `None` if the cursor isn't at a digit valid for `radix`.
+    /// Does not handle prefixes like `0x` or `0b` — consume those yourself
+    /// before calling this.
+    pub fn eat_digits(&mut self, radix: u32) -> Option<Span> {
+        if !self.peek().is_some_and(|c| c.is_digit(radix)) {
+            return None;
+        }
+
+        Some(self.eat_while(|c| c.is_digit(radix)))
+    }
+
+    /// Consume a `//` line comment through to (but not including) the newline.
+    ///
+    /// Returns `None` if the next two characters aren't `//`.
+    pub fn eat_line_comment(&mut self) -> Option<Span> {
+        if self.peek() != Some('/') || self.peek_nth(1) != Some('/') {
+            return None;
+        }
+
+        let start = self.offset;
+        self.advance();
+        self.advance();
+        self.eat_while(|c| c != '\n');
+        Some(self.span_from(start))
+    }
+
+    /// Consumes a quoted string delimited by `delim`.
+    ///
+    /// Handles backslash escape sequences — the character after `\` is
+    /// consumed without being checked.
+    ///
+    /// Returns:
+    /// - `None` if the cursor isn't at `delim` (not a quoted string here).
+    /// - `Some(Ok(span))` if the string was fully consumed, including both delimiters.
+    /// - `Some(Err(span))` if the string started but was never closed
+    /// (reached EOF). The span covers everything from the opening delimiter.
+    pub fn eat_quoted(&mut self, delim: char) -> Option<Result<Span, Span>> {
+        if self.peek() != Some(delim) {
+            return None;
+        }
+
+        let start = self.offset;
+        self.advance(); // opening delimiter
+
+        loop {
+            match self.advance() {
+                None => return Some(Err(self.span_from(start))), // unterminated
+                Some('\\') => { self.advance(); }, // skip escaped char
+                Some(c) if c == delim => break,
+                _ => {}
+            }
+        }
+
+        Some(Ok(self.span_from(start)))
     }
 }
