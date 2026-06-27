@@ -97,17 +97,22 @@ impl<T: Token> TokenStream<T> {
 
     /// Advance if `pred` matches the next token; otherwise return a `ParseError`.
     ///
+    /// The `label` parameter describes what was expected — the word "expected"
+    /// is prepended automatically. Pass `"fn"` rather than
+    /// ``"expected `fn`"``.
+    ///
     /// # Example
     ///
     /// ```rust,ignore
-    /// stream.expect(|t: &MyToken| t.kind == MyKind::Semicolon, "expected `;`")?;
+    /// stream.expect(|t: &MyToken| t.kind == MyKind::Semicolon, ";")?;
+    /// // On failure: "expected `;`"
     /// ```
-    pub fn expect(&mut self, pred: impl FnOnce(&T) -> bool, message: impl Into<String>) -> Result<&T, ParseError> {
+    pub fn expect(&mut self, pred: impl FnOnce(&T) -> bool, label: impl Into<String>) -> Result<&T, ParseError> {
         if pred(self.peek()) {
             Ok(self.advance())
         } else {
             let span = self.peek().span();
-            Err(ParseError::new(span, message.into()))
+            Err(ParseError::new(span, format!("expected `{}`", label.into())))
         }
     }
 }
