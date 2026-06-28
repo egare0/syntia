@@ -46,8 +46,9 @@ impl Lex for ArithLexer {
     type Token = Tok;
     type Error = LexError;
 
-    fn lex(&mut self, source: &str) -> Result<Vec<Tok>, Vec<LexError>> {
-        let mut cursor = Cursor::new(source);
+    fn lex(&mut self, input: &str) -> Result<Vec<Tok>, Vec<LexError>> {
+        let source = Source::new(input);
+        let mut cursor = Cursor::new(input);
         let mut tokens = Vec::new();
         let mut errors = Vec::new();
 
@@ -82,7 +83,7 @@ impl Lex for ArithLexer {
                 Some(c) if c.is_ascii_digit() => {
                     let span = cursor.eat_digits(10).unwrap();
 
-                    let val_str = &source[span.start..span.end];
+                    let val_str = source.slice(span);
                     let val = val_str.parse::<i64>().unwrap();
 
                     tokens.push(Tok {
