@@ -42,7 +42,7 @@ impl ParseError {
         self
     }
 
-    pub fn with_notes(mut self, note: impl Into<String>) -> Self {
+    pub fn with_note(mut self, note: impl Into<String>) -> Self {
         self.notes.push(note.into());
         self
     }
