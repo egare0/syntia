@@ -16,7 +16,7 @@ pub struct TokenStream<T> {
     pos: usize
 }
 
-impl<T: Token> TokenStream<T> {
+impl<T: Token + Copy> TokenStream<T> {
     /// Create a stream from a vec of tokens.
     ///
     /// The vec must be non-empty and end with an EOF sentinel.
@@ -107,9 +107,9 @@ impl<T: Token> TokenStream<T> {
     /// stream.expect(|t: &MyToken| t.kind == MyKind::Semicolon, ";")?;
     /// // On failure: "expected `;`"
     /// ```
-    pub fn expect(&mut self, pred: impl FnOnce(&T) -> bool, label: impl Into<String>) -> Result<&T, ParseError> {
+    pub fn expect(&mut self, pred: impl FnOnce(&T) -> bool, label: impl Into<String>) -> Result<T, ParseError> {
         if pred(self.peek()) {
-            Ok(self.advance())
+            Ok(*self.advance())
         } else {
             let span = self.peek().span();
             Err(ParseError::new(span, format!("expected `{}`", label.into())))
