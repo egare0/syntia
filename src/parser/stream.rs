@@ -78,7 +78,7 @@ impl<T: Token + Copy> TokenStream<T> {
     /// ```rust,ignore
     /// let result = stream.try_parse(|s| {
     ///     let a = s.advance();
-    ///     s.expect(|t| t.kind == Kind::Plus, "expected `+`")?;
+    ///     s.expect(|t| t.kind == Kind::Plus, "+")?;
     ///     let b = s.advance();
     ///     Ok((a, b))
     /// });
