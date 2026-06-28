@@ -115,4 +115,93 @@ impl<T: Token> TokenStream<T> {
             Err(ParseError::new(span, format!("expected `{}`", label.into())))
         }
     }
+
+    /// Collect results from repeated calls to `f` until it fails.
+    ///
+    /// Never returns an error — if `f` fails on the first call, returns an
+    /// empty vec. Backtracks automatically on failure.
+    ///
+    /// # Infinite loop guard
+    ///
+    /// If `f` succeeds without consuming any tokens, `many` stops immediately.
+    /// Make sure `f` always consumes at least one token when it returns `Ok`.
+    pub fn many<R>(&mut self, mut f: impl FnMut(&mut Self) -> Result<R, ParseError>) -> Vec<R> {
+        let mut results = Vec::new();
+
+        loop {
+            let checkpoint = self.checkpoint();
+
+            match f(self) {
+                Ok(r) => {
+                    results.push(r);
+
+                    // If f succeeded but consumed nothing, we'd loop forever.
+                    if self.checkpoint() == checkpoint {
+                        break;
+                    }
+                }
+                Err(_) => {
+                    self.restore(checkpoint);
+                    break;
+                }
+            }
+        }
+
+        results
+    }
+
+    /// Try `f` once; return `Some` on success, `None` on failure.
+    ///
+    /// Backtracks automatically if `f` returns `Err`.
+    pub fn optional<R>(&mut self, f: impl FnOnce(&mut Self) -> Result<R, ParseError>) -> Option<R> {
+        let checkpoint = self.checkpoint();
+
+        match f(self) {
+            Ok(r) => Some(r),
+            Err(_) => {
+                self.restore(checkpoint);
+                None
+            }
+        }
+    }
+
+    /// Parse a sequence of items separated by tokens matching `sep`.
+    ///
+    /// Requires at least one item — returns `f`'s error if the first
+    /// parse fails. Does not consume a trailing separator.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // parses: expr ("," expr)*
+    /// let args = stream.separated_by(
+    ///     |s| Expr::parse(s),
+    ///     |t: &MyToken| t.kind == MyKind::Comma,
+    /// )?;
+    /// ```
+    pub fn separated_by<R>(&mut self, mut item: impl FnMut(&mut Self) -> Result<R, ParseError>, mut sep: impl FnMut(&T) -> bool) -> Result<Vec<R>, ParseError> {
+        let mut results = vec![item(self)?];
+
+        loop {
+            // Save before consuming the separator so we can backtrack
+            // if the next item fails (handles trailing separators cleanly).
+            let checkpoint = self.checkpoint();
+
+            if !sep(self.peek()) {
+                break;
+            }
+
+            self.advance(); // consume separator
+
+            match item(self) {
+                Ok(r) => results.push(r),
+                Err(_) => {
+                    self.restore(checkpoint); // put separator back
+                    break;
+                }
+            }
+        }
+
+        Ok(results)
+    }
 }
