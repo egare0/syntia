@@ -92,9 +92,12 @@ impl ParseError {
 
         // underline
         let col0 = (start.col as usize).saturating_sub(1); // 0-indexed column
-        let span_len = (self.span.end - self.span.start).max(1);
-        let available = line_text.len().saturating_sub(col0);
-        let hat_count = span_len.min(available).max(1);
+
+        // Count in characters, not bytes, so the underline stays aligned when
+        // the line contains multibyte characters.
+        let span_chars = source.slice(self.span).split('\n').next().map_or(0, |s| s.chars().count());
+        let available = line_text.chars().count().saturating_sub(col0);
+        let hat_count = span_chars.min(available).max(1);
         let hats = "^".repeat(hat_count);
 
         let label = match &self.found {
