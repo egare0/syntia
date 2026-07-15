@@ -50,9 +50,19 @@ impl<'src> Cursor<'src> {
 
     /// Peek `n` characters ahead without consuming (0 = same as `peek`).
     ///
-    /// O(n)  — scans forward through UTF-8 bytes to find the nth character.
-    /// Fine for small lookaheads, don't call in a tight loop with large n.
+    /// Worst case O(n), but pure-ASCII input takes a cheap byte-scan path
+    /// instead of full UTF-8 decoding.
     pub fn peek_nth(&self, n: usize) -> Option<char> {
+        let rest = self.source[self.offset..].as_bytes();
+
+        // Fast path: if everything up to and including byte n in ASCII,
+        // byte n is exactly character n.
+        if let Some(window) = rest.get(..=n) {
+            if window.is_ascii() {
+                return Some(window[n] as char);
+            }
+        }
+
         self.source[self.offset..].chars().nth(n)
     }
 
