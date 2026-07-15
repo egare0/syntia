@@ -1,6 +1,6 @@
 [package]
 name = "syntia"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT"
 description = "A lightweight toolkit for building lexers and parsers in Rust."
