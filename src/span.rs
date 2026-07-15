@@ -12,6 +12,7 @@ pub struct Span {
 
 impl Span {
     #[inline]
+    #[must_use]
     pub fn new(start: usize, end: usize) -> Self {
         debug_assert!(start <= end, "Span: start ({start}) > end ({end})");
         Self { start, end }
@@ -21,22 +22,26 @@ impl Span {
     ///
     /// Useful for EOF tokens or point diagnostics where there's no actual range.
     #[inline]
+    #[must_use]
     pub fn point(offset: usize) -> Self {
         Self { start: offset, end: offset }
     }
 
     #[inline]
+    #[must_use]
     pub fn len(&self) -> usize {
         self.end - self.start
     }
 
     #[inline]
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.start == self.end
     }
 
     /// Extend this span to also cover `other`, returning the union of both.
     #[inline]
+    #[must_use]
     pub fn merge(self, other: Span) -> Self {
         Self {
             start: self.start.min(other.start),
@@ -46,6 +51,7 @@ impl Span {
 
     /// Whether a byte offset falls within this span (start-inclusive, end-exclusive).
     #[inline]
+    #[must_use]
     pub fn contains_offset(&self, offset: usize) -> bool {
         offset >= self.start && offset < self.end
     }
@@ -72,12 +78,14 @@ pub struct Pos {
 
 impl Pos {
     #[inline]
+    #[must_use]
     pub fn new(offset: usize, line: u32, col: u32) -> Self {
         Self { offset, line, col }
     }
 
     /// The start of a source file: offset 0, line 1, column 1.
     #[inline]
+    #[must_use]
     pub fn start() -> Self {
         Self { offset: 0, line: 1, col: 1 }
     }

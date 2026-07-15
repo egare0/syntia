@@ -21,8 +21,9 @@ impl<T: Token + Copy> TokenStream<T> {
     ///
     /// The vec must be non-empty and end with an EOF sentinel. Debug builds
     /// assert this; release builds trust the caller.
+    #[must_use]
     pub fn new(tokens: Vec<T>) -> Self {
-        debug_assert!(tokens.last().is_some_and(|t| t.is_eof()), "TokenStream requires a non-empty token vec ending with an EOF sentinel");
+        debug_assert!(tokens.last().is_some_and(Token::is_eof), "TokenStream requires a non-empty token vec ending with an EOF sentinel");
         Self { tokens, pos: 0 }
     }
 
@@ -30,12 +31,14 @@ impl<T: Token + Copy> TokenStream<T> {
     ///
     /// Once the stream reaches EOF, this always returns the EOF token.
     #[inline]
+    #[must_use]
     pub fn peek(&self) -> &T {
         &self.tokens[self.pos.min(self.tokens.len() - 1)]
     }
 
     /// Look `n` tokens ahead without consuming (0 is the same as `peek`).
     #[inline]
+    #[must_use]
     pub fn peek_nth(&self, n: usize) -> &T {
         let idx = (self.pos + n).min(self.tokens.len() - 1);
         &self.tokens[idx]
@@ -56,12 +59,14 @@ impl<T: Token + Copy> TokenStream<T> {
 
     /// Whether the next token is an EOF sentinel.
     #[inline]
+    #[must_use]
     pub fn is_at_end(&self) -> bool {
         self.peek().is_eof()
     }
 
     /// Save the current position for potential backtracking.
     #[inline]
+    #[must_use]
     pub fn checkpoint(&self) -> usize {
         self.pos
     }
@@ -133,19 +138,16 @@ impl<T: Token + Copy> TokenStream<T> {
         loop {
             let checkpoint = self.checkpoint();
 
-            match f(self) {
-                Ok(r) => {
-                    results.push(r);
+            if let Ok(r) = f(self) {
+                results.push(r);
 
-                    // If f succeeded but consumed nothing, we'd loop forever.
-                    if self.checkpoint() == checkpoint {
-                        break;
-                    }
-                }
-                Err(_) => {
-                    self.restore(checkpoint);
+                // If f succeeded but consumed nothing, we'd loop forever.
+                if self.checkpoint() == checkpoint {
                     break;
                 }
+            } else {
+                self.restore(checkpoint);
+                break;
             }
         }
 
@@ -158,12 +160,9 @@ impl<T: Token + Copy> TokenStream<T> {
     pub fn optional<R>(&mut self, f: impl FnOnce(&mut Self) -> Result<R, ParseError>) -> Option<R> {
         let checkpoint = self.checkpoint();
 
-        match f(self) {
-            Ok(r) => Some(r),
-            Err(_) => {
-                self.restore(checkpoint);
-                None
-            }
+        if let Ok(r) = f(self) { Some(r) } else {
+            self.restore(checkpoint);
+            None
         }
     }
 
@@ -195,12 +194,9 @@ impl<T: Token + Copy> TokenStream<T> {
 
             self.advance(); // consume separator
 
-            match item(self) {
-                Ok(r) => results.push(r),
-                Err(_) => {
-                    self.restore(checkpoint); // put separator back
-                    break;
-                }
+            if let Ok(r) = item(self) { results.push(r) } else {
+                self.restore(checkpoint); // put separator back
+                break;
             }
         }
 

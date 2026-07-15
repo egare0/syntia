@@ -12,10 +12,10 @@ use crate::Token;
 /// # Conventions
 ///
 /// - Collect all lex errors rather than bailing on the first. Let users see
-/// everything that's wrong at once.
+///   everything that's wrong at once.
 /// - Emit tokens in source order.
 /// - The last token in the returned `Vec` must be an EOF sentinel: a token
-/// where [`Token::is_eof`] returns `true`. [`TokenStream`] relies on this.
+///   where [`Token::is_eof`] returns `true`. [`TokenStream`] relies on this.
 ///
 /// [`TokenStream`]: crate::parser::TokenStream
 ///

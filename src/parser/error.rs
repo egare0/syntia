@@ -32,16 +32,19 @@ impl ParseError {
         }
     }
 
+    #[must_use]
     pub fn with_expected(mut self, expected: impl Into<String>) -> Self {
         self.expected.push(expected.into());
         self
     }
 
+    #[must_use]
     pub fn with_found(mut self, found: impl Into<String>) -> Self {
         self.found = Some(found.into());
         self
     }
 
+    #[must_use]
     pub fn with_note(mut self, note: impl Into<String>) -> Self {
         self.notes.push(note.into());
         self
@@ -68,6 +71,7 @@ impl ParseError {
     ///    |
     ///    = expected `;`
     /// ```
+    #[must_use]
     pub fn render(&self, source: &Source<'_>) -> String {
         let start = source.pos_of(self.span.start);
         let line_text = source.line_text(start.line).unwrap_or("");

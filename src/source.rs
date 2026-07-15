@@ -10,21 +10,25 @@ pub struct Source<'src> {
 }
 
 impl<'src> Source<'src> {
+    #[must_use]
     pub fn new(src: &'src str) -> Self {
         Self { inner: src }
     }
 
     #[inline]
+    #[must_use]
     pub fn as_str(&self) -> &'src str {
         self.inner
     }
 
     #[inline]
+    #[must_use]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
     #[inline]
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -34,6 +38,7 @@ impl<'src> Source<'src> {
     /// Panics if the span is out of range. In practice spans always come from
     /// this same source, so this shouldn't happen.
     #[inline]
+    #[must_use]
     pub fn slice(&self, span: Span) -> &'src str {
         &self.inner[span.start..span.end]
     }
@@ -41,6 +46,7 @@ impl<'src> Source<'src> {
     /// Compute the line/column position of a byte offset.
     ///
     /// O(n) — only call this when rendering error messages.
+    #[must_use]
     pub fn pos_of(&self, offset: usize) -> Pos {
         let mut line = 1u32;
         let mut col = 1u32;
@@ -64,6 +70,7 @@ impl<'src> Source<'src> {
     /// The text of a given line number (1-indexed).
     ///
     /// Returns `None` if out of range.
+    #[must_use]
     pub fn line_text(&self, line: u32) -> Option<&'src str> {
         self.inner.lines().nth((line - 1) as usize)
     }
@@ -72,6 +79,7 @@ impl<'src> Source<'src> {
     ///
     /// [`Cursor`]: crate::lexer::Cursor
     #[cfg(feature = "lexer")]
+    #[must_use]
     pub fn cursor(&self) -> crate::lexer::Cursor<'src> {
         crate::lexer::Cursor::new(self.inner)
     }

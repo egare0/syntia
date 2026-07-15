@@ -26,24 +26,28 @@ pub struct Cursor<'src> {
 }
 
 impl<'src> Cursor<'src> {
+    #[must_use]
     pub fn new(source: &'src str) -> Self {
         Self { source, offset: 0, line: 1, col: 1 }
     }
 
     /// The current byte offset into the source.
     #[inline]
+    #[must_use]
     pub fn offset(&self) -> usize {
         self.offset
     }
 
     /// The current position with line and column numbers.
     #[inline]
+    #[must_use]
     pub fn pos(&self) -> Pos {
         Pos::new(self.offset, self.line, self.col)
     }
 
     /// Peek at the next character without consuming it.
     #[inline]
+    #[must_use]
     pub fn peek(&self) -> Option<char> {
         self.source[self.offset..].chars().next()
     }
@@ -52,15 +56,14 @@ impl<'src> Cursor<'src> {
     ///
     /// Worst case O(n), but pure-ASCII input takes a cheap byte-scan path
     /// instead of full UTF-8 decoding.
+    #[must_use]
     pub fn peek_nth(&self, n: usize) -> Option<char> {
-        let rest = self.source[self.offset..].as_bytes();
+        let rest = &self.source.as_bytes()[self.offset..];
 
         // Fast path: if everything up to and including byte n in ASCII,
         // byte n is exactly character n.
-        if let Some(window) = rest.get(..=n) {
-            if window.is_ascii() {
-                return Some(window[n] as char);
-            }
+        if let Some(window) = rest.get(..=n) && window.is_ascii() {
+            return Some(window[n] as char);
         }
 
         self.source[self.offset..].chars().nth(n)
@@ -83,12 +86,14 @@ impl<'src> Cursor<'src> {
 
     /// Whether the cursor is at the end of the source.
     #[inline]
+    #[must_use]
     pub fn is_at_end(&self) -> bool {
         self.offset >= self.source.len()
     }
 
     /// Build a span from `start` to the current offset
     #[inline]
+    #[must_use]
     pub fn span_from(&self, start: usize) -> Span {
         Span::new(start, self.offset)
     }
@@ -99,7 +104,7 @@ impl<'src> Cursor<'src> {
     pub fn eat_while(&mut self, mut pred: impl FnMut(char) -> bool) -> Span {
         let start = self.offset;
 
-        while self.peek().is_some_and(|c| pred(c)) {
+        while self.peek().is_some_and(&mut pred) {
             self.advance();
         }
 
@@ -120,12 +125,10 @@ impl<'src> Cursor<'src> {
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    /// Skip ASCII whitespace (space, tab, `\r`, `\n`).
-    ///
-    /// Returns the span covered. If there's no whitespace at the current
-    /// position, returns an empty span.
+    /// Skip whitespace (Unicode `White_Space`, which includes space, tab,
+    /// `\r`, and `\n`).
     pub fn eat_whitespace(&mut self) -> Span {
-        self.eat_while(|c| c.is_whitespace())
+        self.eat_while(char::is_whitespace)
     }
 
     /// Consume an identifier: starts with a letter or `_`, followed by
@@ -179,7 +182,7 @@ impl<'src> Cursor<'src> {
     /// - `None` if the cursor isn't at `delim` (not a quoted string here).
     /// - `Some(Ok(span))` if the string was fully consumed, including both delimiters.
     /// - `Some(Err(span))` if the string started but was never closed
-    /// (reached EOF). The span covers everything from the opening delimiter.
+    ///   (reached EOF). The span covers everything from the opening delimiter.
     pub fn eat_quoted(&mut self, delim: char) -> Option<Result<Span, Span>> {
         if self.peek() != Some(delim) {
             return None;
