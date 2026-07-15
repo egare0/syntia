@@ -19,8 +19,10 @@ pub struct TokenStream<T> {
 impl<T: Token + Copy> TokenStream<T> {
     /// Create a stream from a vec of tokens.
     ///
-    /// The vec must be non-empty and end with an EOF sentinel.
+    /// The vec must be non-empty and end with an EOF sentinel. Debug builds
+    /// assert this; release builds trust the caller.
     pub fn new(tokens: Vec<T>) -> Self {
+        debug_assert!(tokens.last().is_some_and(|t| t.is_eof()), "TokenStream requires a non-empty token vec ending with an EOF sentinel");
         Self { tokens, pos: 0 }
     }
 
