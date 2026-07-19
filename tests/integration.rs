@@ -232,6 +232,30 @@ mod cursor_tests {
     }
 }
 
+// ── LexError ───────────────────────────────────────────────────────────────
+
+#[cfg(feature = "lexer")]
+mod lex_error_tests {
+    use syntia::{Source, Span};
+    use syntia::lexer::LexError;
+
+    struct E { span: Span }
+
+    impl LexError for E {
+        fn span(&self) -> Span { self.span }
+        fn message(&self) -> String { "bad input".into() }
+    }
+
+    #[test]
+    fn render_matches_parse_error_format() {
+        let src = Source::new("1 @ 2");
+        let rendered = E { span: Span::new(2, 3) }.render(&src);
+        assert!(rendered.contains("error: bad input"));
+        assert!(rendered.contains("-->"));
+        assert!(rendered.contains('^'));
+    }
+}
+
 // ── TokenStream ──────────────────────────────────────────────────────────────
 
 #[cfg(feature = "parser")]
@@ -369,6 +393,52 @@ mod stream_tests {
         assert_eq!(nums.len(), 2);
         assert_eq!(s.peek().kind, K::Plus); // still there
     }
+
+    #[test]
+    fn many1_ok() {
+        let mut s = TokenStream::new(vec![
+            tok(K::Num, 0, 1), tok(K::Num, 2, 3), tok(K::Plus, 4, 5), eof(5),
+        ]);
+        let nums = s.many1(|s| s.expect(|t| t.kind == K::Num, "num")).unwrap();
+        assert_eq!(nums.len(), 2);
+        assert_eq!(s.peek().kind, K::Plus);
+    }
+
+    #[test]
+    fn many1_err_on_no_match() {
+        let mut s = stream(); // starts with Num
+        assert!(s.many1(|s| s.expect(|t| t.kind == K::Plus, "+")).is_err());
+        assert_eq!(s.peek().kind, K::Num); // unchanged
+    }
+
+    #[test]
+    fn separated_by_trailing_consumes_trailing_sep() {
+        // Num Plus Num Plus Eof — trailing Plus gets eaten
+        let mut s = TokenStream::new(vec![
+            tok(K::Num, 0, 1), tok(K::Plus, 2, 3),
+            tok(K::Num, 4, 5), tok(K::Plus, 6, 7),
+            eof(7),
+        ]);
+        let nums = s.separated_by_trailing(
+            |s| s.expect(|t| t.kind == K::Num, "num"),
+            |t| t.kind == K::Plus,
+        ).unwrap();
+        assert_eq!(nums.len(), 2);
+        assert!(s.is_at_end()); // trailing Plus consumed
+    }
+
+    #[test]
+    fn separated_by_trailing_without_trailing_sep() {
+        let mut s = TokenStream::new(vec![
+            tok(K::Num, 0, 1), tok(K::Plus, 2, 3), tok(K::Num, 4, 5), eof(5),
+        ]);
+        let nums = s.separated_by_trailing(
+            |s| s.expect(|t| t.kind == K::Num, "num"),
+            |t| t.kind == K::Plus,
+        ).unwrap();
+        assert_eq!(nums.len(), 2);
+        assert!(s.is_at_end());
+    }
 }
 
 // ── ParseError ───────────────────────────────────────────────────────────────
@@ -417,5 +487,25 @@ mod error_tests {
     fn implements_std_error() {
         let err = ParseError::new(Span::point(0), "test");
         let _: &dyn std::error::Error = &err;
+    }
+
+    #[test]
+    fn render_shows_secondary_label() {
+        let src = Source::new("fn main() {\nlet x = 1;\n}");
+        let rendered = ParseError::new(Span::new(22, 23), "unexpected `}`")
+            .with_label(Span::new(10, 11), "opening brace here")
+            .render(&src);
+        assert!(rendered.contains("opening brace here"));
+        assert!(rendered.contains('-'));
+    }
+
+    #[test]
+    fn underline_aligned_after_multibyte_char() {
+        // 'ü' is 2 bytes; error points at `}` right after it.
+        let src = Source::new("ü }");
+        let rendered = ParseError::new(Span::new(3, 4), "unexpected").render(&src);
+        // The line "ü }" has the `}` at character column 3, so the underline
+        // row should be exactly two spaces then one hat after the gutter.
+        assert!(rendered.contains("|   ^"));
     }
 }
