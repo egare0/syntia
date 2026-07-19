@@ -133,6 +133,18 @@ impl<T: Token> TokenStream<T> {
         results
     }
 
+    /// Like [`many`], but requires at least one item.
+    ///
+    /// Returns the first parse's error if it fails; after that, behaves
+    /// exactly like `many` (stops on the first failure, backtracks).
+    ///
+    /// [`many`]: TokenStream::many
+    pub fn many1<R>(&mut self, mut f: impl FnMut(&mut Self) -> Result<R, ParseError>) -> Result<Vec<R>, ParseError> {
+        let mut results = vec![f(self)?];
+        results.append(&mut self.many(f));
+        Ok(results)
+    }
+
     /// Try `f` once; return `Some` on success, `None` on failure.
     ///
     /// Backtracks automatically if `f` returns `Err`.
