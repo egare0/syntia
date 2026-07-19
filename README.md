@@ -41,7 +41,7 @@ syntia = { version = "0.2", default-features = false, features = ["parser"] }
 ```rust
 use syntia::{Span, Source, Spanned, Token};
 use syntia::lexer::{Cursor, Lex, LexError};
-use syntia::parser::TokenStream;
+use syntia::parser::{Parse, ParseError, TokenStream};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Kind { Number, Plus, Eof }
@@ -73,7 +73,6 @@ impl Lex for MyLexer {
     fn lex(&mut self, source: &str) -> Result<Vec<Tok>, Vec<MyLexError>> {
         let mut cursor = Cursor::new(source);
         let mut tokens = Vec::new();
-        let mut errors = Vec::new();
 
         loop {
             cursor.eat_whitespace();
@@ -81,35 +80,46 @@ impl Lex for MyLexer {
                 tokens.push(Tok { kind: Kind::Eof, span: Span::point(cursor.offset()) });
                 break;
             }
-            if cursor.eat_if('+') {
-                let end = cursor.offset();
-                tokens.push(Tok { kind: Kind::Plus, span: Span::new(end - 1, end) });
-            } else if let Some(span) = cursor.eat_digits(10) {
-                tokens.push(Tok { kind: Kind::Number, span });
-            } else {
-                let start = cursor.offset();
-                cursor.advance();
-                errors.push(MyLexError { span: cursor.span_from(start) });
+            match cursor.peek() {
+                Some('+') => {
+                    let start = cursor.offset();
+                    cursor.advance();
+                    tokens.push(Tok { kind: Kind::Plus, span: cursor.span_from(start) });
+                }
+                _ => {
+                    let span = cursor.eat_digits(10).unwrap_or_else(|| {
+                        let s = cursor.offset(); cursor.advance(); cursor.span_from(s)
+                    });
+                    tokens.push(Tok { kind: Kind::Number, span });
+                }
             }
         }
-
-        if errors.is_empty() { Ok(tokens) } else { Err(errors) }
+        Ok(tokens)
     }
 }
 
-// Parse — expect takes a label, "expected" is added automatically.
-let src = Source::new("1 + 2");
-let tokens = MyLexer.lex(src.as_str()).unwrap();
-let mut stream = TokenStream::new(tokens);
+// Implement Parse for our nodes.
+impl Parse<Tok> for Spanned<i64> {
+    fn parse(stream: &mut TokenStream<Tok>) -> Result<Self, ParseError> {
+        let tok = stream.expect(|t| t.kind == Kind::Number, "number")?;
+        Ok(Spanned::new(0, tok.span)) // Value extraction logic goes here
+    }
+}
 
-// Tokens are Copy — dereference to end the borrow on the stream.
-let lhs = *stream.advance();
-stream.expect(|t: &Tok| t.kind == Kind::Plus, "`+`").unwrap();
-let rhs = *stream.advance();
+fn main() {
+    // Parse — expect takes a label, "expected" is added automatically.
+    let src = Source::new("1 + 2");
+    let tokens = MyLexer.lex(src.as_str()).unwrap();
+    let mut stream = TokenStream::new(tokens);
 
-// Pair the result with the span it came from.
-let result = Spanned::new(3_i64, lhs.span().merge(rhs.span()));
-assert_eq!(src.slice(result.span), "1 + 2");
+    let lhs = Spanned::<i64>::parse(&mut stream).unwrap();
+    stream.expect(|t| t.kind == Kind::Plus, "`+`").unwrap();
+    let rhs = Spanned::<i64>::parse(&mut stream).unwrap();
+
+    // Pair the result with the span it came from.
+    let result = Spanned::new(3_i64, lhs.span.merge(rhs.span));
+    assert_eq!(src.slice(result.span), "1 + 2");
+}
 ```
 
 See the [crate documentation](https://docs.rs/syntia) and
