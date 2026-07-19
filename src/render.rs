@@ -11,7 +11,7 @@ pub(crate) struct Diagnostic<'a> {
     pub labels: &'a [(Span, String)],
 }
 
-pub(crate) fn render(diag: Diagnostic<'_>, source: &Source<'_>) -> String {
+pub(crate) fn render(diag: &Diagnostic<'_>, source: &Source<'_>) -> String {
     let start = source.pos_of(diag.span.start);
 
     // Gutter width: widest line number among the primary span and all labels.

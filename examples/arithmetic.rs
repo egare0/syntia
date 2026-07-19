@@ -4,7 +4,7 @@
 //! Run with: cargo run --example arithmetic
 
 use syntia::{Source, Span, Spanned, Token};
-use syntia::lexer::{Lex, Cursor};
+use syntia::lexer::{Lex, Cursor, LexError};
 use syntia::parser::{ParseError, TokenStream, Parse};
 
 // ── token ─────────────────────────────────────────────────────────────────────
@@ -35,18 +35,28 @@ impl Token for Tok {
 // ── lexer ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug)]
-struct LexError {
+struct ArithLexError {
     ch: char,
     span: Span,
+}
+
+impl LexError for ArithLexError {
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn message(&self) -> String {
+        format!("unexpected character `{}`", self.ch)
+    }
 }
 
 struct ArithLexer;
 
 impl Lex for ArithLexer {
     type Token = Tok;
-    type Error = LexError;
+    type Error = ArithLexError;
 
-    fn lex(&mut self, input: &str) -> Result<Vec<Tok>, Vec<LexError>> {
+    fn lex(&mut self, input: &str) -> Result<Vec<Tok>, Vec<ArithLexError>> {
         let source = Source::new(input);
         let mut cursor = Cursor::new(input);
         let mut tokens = Vec::new();
@@ -94,7 +104,7 @@ impl Lex for ArithLexer {
                 Some(c) => {
                     let start = cursor.offset();
                     cursor.advance();
-                    errors.push(LexError {
+                    errors.push(ArithLexError {
                         ch: c,
                         span: cursor.span_from(start)
                     });
@@ -183,7 +193,7 @@ fn eval(input: &str) -> Result<i64, String> {
 
     let tokens = ArithLexer.lex(input).map_err(|errs| {
         errs.iter()
-            .map(|e| format!("unexpected '{}' at {}", e.ch, e.span))
+            .map(|e| e.render(&source))
             .collect::<Vec<_>>()
             .join("\n")
     })?;

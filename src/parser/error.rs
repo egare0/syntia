@@ -85,7 +85,7 @@ impl ParseError {
     #[must_use]
     pub fn render(&self, source: &Source<'_>) -> String {
         crate::render::render(
-            crate::render::Diagnostic {
+            &crate::render::Diagnostic {
                 span: self.span,
                 message: &self.message,
                 found: self.found.as_deref(),

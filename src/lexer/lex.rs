@@ -1,3 +1,4 @@
+use crate::lexer::LexError;
 use crate::Token;
 
 /// Implement this on your lexer to wire it into syntia.
@@ -19,6 +20,11 @@ use crate::Token;
 ///
 /// [`TokenStream`]: crate::parser::TokenStream
 ///
+/// # Errors
+///
+/// `Error` must implement [`LexError`] — a span and a message. In return,
+/// every lex error can be rendered as a diagnostic via [`LexError::render`].
+///
 /// # Example
 ///
 /// ```rust,ignore
@@ -35,7 +41,7 @@ use crate::Token;
 /// ```
 pub trait Lex {
     type Token: Token;
-    type Error;
+    type Error: LexError;
 
     fn lex(&mut self, source: &str) -> Result<Vec<Self::Token>, Vec<Self::Error>>;
 }
