@@ -193,6 +193,34 @@ impl<T: Token> TokenStream<T> {
 
         Ok(results)
     }
+
+    /// Like [`separated_by`], but a trailing separator is allowed and
+    /// consumed as part of the list.
+    ///
+    /// Parses `a, b, c` and `a, b, c,` identically — both yield three items,
+    /// and in the second case the final separator is consumed.
+    ///
+    /// [`separated_by`]: TokenStream::separated_by
+    pub fn separated_by_trailing<R>(&mut self, mut item: impl FnMut(&mut Self) -> Result<R, ParseError>, mut sep: impl FnMut(&T) -> bool) -> Result<Vec<R>, ParseError> {
+        let mut results = vec![item(self)?];
+
+        while sep(self.peek()) {
+            self.advance(); // consume separator
+
+            // If no item follows, this was a trailing separator — keep it
+            // consumed and stop.
+            let checkpoint = self.checkpoint();
+            match item(self) {
+                Ok(r) => results.push(r),
+                Err(_) => {
+                    self.restore(checkpoint);
+                    break;
+                }
+            }
+        }
+
+        Ok(results)
+    }
 }
 
 impl<T: Token + Copy> TokenStream<T> {
