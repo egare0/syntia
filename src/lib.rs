@@ -148,3 +148,6 @@ pub mod lexer;
 /// [`render`]: parser::ParseError::render
 #[cfg(feature = "parser")]
 pub mod parser;
+
+#[cfg(any(feature = "lexer", feature = "parser"))]
+mod render;

@@ -73,59 +73,16 @@ impl ParseError {
     /// ```
     #[must_use]
     pub fn render(&self, source: &Source<'_>) -> String {
-        let start = source.pos_of(self.span.start);
-        let line_text = source.line_text(start.line).unwrap_or("");
-        let line_num_str = start.line.to_string();
-        // Gutter width = width of the line number string, minimum 2 chars.
-        let gutter = line_num_str.len().max(2);
-        let pad = " ".repeat(gutter);
-
-        let mut out = String::new();
-
-        // error: <message>
-        out.push_str(&format!("error: {}\n", self.message));
-
-        // --> <line>:<col>
-        out.push_str(&format!("{pad}--> {}:{}\n", start.line, start.col));
-
-        // gutter separator
-        out.push_str(&format!("{pad} |\n"));
-
-        // line number + source line
-        out.push_str(&format!("{:>gutter$} | {line_text}\n", start.line));
-
-        // underline
-        let col0 = (start.col as usize).saturating_sub(1); // 0-indexed column
-
-        // Count in characters, not bytes, so the underline stays aligned when
-        // the line contains multibyte characters.
-        let span_chars = source.slice(self.span).split('\n').next().map_or(0, |s| s.chars().count());
-        let available = line_text.chars().count().saturating_sub(col0);
-        let hat_count = span_chars.min(available).max(1);
-        let hats = "^".repeat(hat_count);
-
-        let label = match &self.found {
-            Some(f) => format!(" found `{f}`"),
-            None => String::new(),
-        };
-
-        out.push_str(&format!("{pad} | {}{hats}{label}\n", " ".repeat(col0)));
-
-        // closing separator
-        out.push_str(&format!("{pad} |\n"));
-
-        // expected hints
-        if !self.expected.is_empty() {
-            let joined = self.expected.join("`, `");
-            out.push_str(&format!("{pad} = expected `{joined}`\n"));
-        }
-
-        // notes
-        for note in &self.notes {
-            out.push_str(&format!("{pad} = note: {note}\n"));
-        }
-
-        out
+        crate::render::render(
+            crate::render::Diagnostic {
+                span: self.span,
+                message: &self.message,
+                found: self.found.as_deref(),
+                expected: &self.expected,
+                notes: &self.notes,
+            },
+            source,
+        )
     }
 }
 
