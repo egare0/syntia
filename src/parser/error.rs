@@ -19,6 +19,8 @@ pub struct ParseError {
     pub found: Option<String>,
     /// Extra notes to show below the diagnostic.
     pub notes: Vec<String>,
+    /// Secondary spans to point at, each with its own note.
+    pub labels: Vec<(Span, String)>,
 }
 
 impl ParseError {
@@ -29,6 +31,7 @@ impl ParseError {
             expected: Vec::new(),
             found: None,
             notes: Vec::new(),
+            labels: Vec::new(),
         }
     }
 
@@ -47,6 +50,14 @@ impl ParseError {
     #[must_use]
     pub fn with_note(mut self, note: impl Into<String>) -> Self {
         self.notes.push(note.into());
+        self
+    }
+
+    /// Point at an additional span with its own note. Rendered below the
+    /// primary span with a `-` underline.
+    #[must_use]
+    pub fn with_label(mut self, span: Span, message: impl Into<String>) -> Self {
+        self.labels.push((span, message.into()));
         self
     }
 
@@ -80,6 +91,7 @@ impl ParseError {
                 found: self.found.as_deref(),
                 expected: &self.expected,
                 notes: &self.notes,
+                labels: &self.labels,
             },
             source,
         )
