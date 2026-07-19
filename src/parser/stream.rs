@@ -16,7 +16,7 @@ pub struct TokenStream<T> {
     pos: usize
 }
 
-impl<T: Token + Copy> TokenStream<T> {
+impl<T: Token> TokenStream<T> {
     /// Create a stream from a vec of tokens.
     ///
     /// The vec must be non-empty and end with an EOF sentinel. Debug builds
@@ -102,27 +102,6 @@ impl<T: Token + Copy> TokenStream<T> {
         }
     }
 
-    /// Advance if `pred` matches the next token; otherwise return a `ParseError`.
-    ///
-    /// The `label` parameter describes what was expected — the word "expected"
-    /// is prepended automatically. Pass `"fn"` rather than
-    /// ``"expected `fn`"``.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// stream.expect(|t: &MyToken| t.kind == MyKind::Semicolon, ";")?;
-    /// // On failure: "expected `;`"
-    /// ```
-    pub fn expect(&mut self, pred: impl FnOnce(&T) -> bool, label: impl Into<String>) -> Result<T, ParseError> {
-        if pred(self.peek()) {
-            Ok(*self.advance())
-        } else {
-            let span = self.peek().span();
-            Err(ParseError::new(span, format!("expected `{}`", label.into())))
-        }
-    }
-
     /// Collect results from repeated calls to `f` until it fails.
     ///
     /// Never returns an error — if `f` fails on the first call, returns an
@@ -201,5 +180,28 @@ impl<T: Token + Copy> TokenStream<T> {
         }
 
         Ok(results)
+    }
+}
+
+impl<T: Token + Copy> TokenStream<T> {
+    /// Advance if `pred` matches the next token; otherwise return a `ParseError`.
+    ///
+    /// The `label` parameter describes what was expected — the word "expected"
+    /// is prepended automatically. Pass `"fn"` rather than
+    /// ``"expected `fn`"``.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// stream.expect(|t: &MyToken| t.kind == MyKind::Semicolon, ";")?;
+    /// // On failure: "expected `;`"
+    /// ```
+    pub fn expect(&mut self, pred: impl FnOnce(&T) -> bool, label: impl Into<String>) -> Result<T, ParseError> {
+        if pred(self.peek()) {
+            Ok(*self.advance())
+        } else {
+            let span = self.peek().span();
+            Err(ParseError::new(span, format!("expected `{}`", label.into())))
+        }
     }
 }
