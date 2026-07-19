@@ -69,7 +69,7 @@ impl ParseError {
     /// # Note on multi-line spans
     ///
     /// If `self.span` crosses a line boundary, the underline is clipped to
-    /// the first line. This is a known limitation — good enough for v0.1.
+    /// the first line. This is a known limitation.
     ///
     /// # Example output
     ///
