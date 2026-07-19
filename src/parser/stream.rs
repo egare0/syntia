@@ -226,9 +226,9 @@ impl<T: Token> TokenStream<T> {
 impl<T: Token + Copy> TokenStream<T> {
     /// Advance if `pred` matches the next token; otherwise return a `ParseError`.
     ///
-    /// The `label` parameter describes what was expected — the word "expected"
-    /// is prepended automatically. Pass `"fn"` rather than
-    /// ``"expected `fn`"``.
+    /// The `label` parameter describes what was expected — it is wrapped in
+    /// backticks and prefixed with "expected" automatically. Pass `"fn"`
+    /// rather than ``"expected `fn`"``.
     ///
     /// # Example
     ///

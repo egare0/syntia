@@ -8,7 +8,7 @@ use crate::{Pos, Span};
 /// # Example
 ///
 /// ```rust
-/// use syntia::{Source, lexer::Cursor};
+/// use syntia::Source;
 ///
 /// let source = Source::new("hello 123");
 /// let mut cursor = source.cursor();
@@ -60,7 +60,7 @@ impl<'src> Cursor<'src> {
     pub fn peek_nth(&self, n: usize) -> Option<char> {
         let rest = &self.source.as_bytes()[self.offset..];
 
-        // Fast path: if everything up to and including byte n in ASCII,
+        // Fast path: if everything up to and including byte n is ASCII,
         // byte n is exactly character n.
         if let Some(window) = rest.get(..=n) && window.is_ascii() {
             return Some(window[n] as char);
@@ -91,7 +91,7 @@ impl<'src> Cursor<'src> {
         self.offset >= self.source.len()
     }
 
-    /// Build a span from `start` to the current offset
+    /// Build a span from `start` to the current offset.
     #[inline]
     #[must_use]
     pub fn span_from(&self, start: usize) -> Span {
@@ -145,11 +145,15 @@ impl<'src> Cursor<'src> {
         Some(self.eat_while(|c| c.is_alphanumeric() || c == '_'))
     }
 
-    /// Consume digits in the given radix (2, 8, 10, or 16).
+    /// Consume digits in the given radix.
     ///
     /// Returns `None` if the cursor isn't at a digit valid for `radix`.
     /// Does not handle prefixes like `0x` or `0b` — consume those yourself
     /// before calling this.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `radix` is greater than 36 (same as [`char::is_digit`]).
     pub fn eat_digits(&mut self, radix: u32) -> Option<Span> {
         if !self.peek().is_some_and(|c| c.is_digit(radix)) {
             return None;

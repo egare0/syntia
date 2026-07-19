@@ -1,4 +1,4 @@
-use crate::lexer::LexError;
+use super::LexError;
 use crate::Token;
 
 /// Implement this on your lexer to wire it into syntia.
