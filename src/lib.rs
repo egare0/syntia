@@ -21,20 +21,22 @@
 //! to an AST node.
 //!
 //! **Errors as values.** [`ParseError`] is a plain struct. Call [`render`] to
-//! get a diagnostic string — syntia never writes to stderr.
+//! get a diagnostic string — syntia never writes to stderr. Lex errors get
+//! the same treatment: implement [`LexError`] on your error type and
+//! `render` comes for free.
 //!
 //! # Feature flags
 //!
-//! | Feature   | Contents                                           | Default |
-//! |-----------|----------------------------------------------------|---------|
-//! | `lexer`   | [`Cursor`] and helpers, [`Lex`] trait              | yes     |
-//! | `parser`  | [`TokenStream`] with combinators, [`ParseError`],  | yes     |
-//! |           | [`Parse`] trait                                    |         |
+//! | Feature   | Contents                                             | Default |
+//! |-----------|------------------------------------------------------|---------|
+//! | `lexer`   | [`Cursor`] and helpers, [`Lex`] and [`LexError`]     | yes     |
+//! | `parser`  | [`TokenStream`] with combinators, [`ParseError`],    | yes     |
+//! |           | [`Parse`] trait                                      |         |
 //!
 //! Enable only `parser` if you're bringing your own lexer:
 //!
 //! ```toml
-//! syntia = { version = "0.1", default-features = false, features = ["parser"] }
+//! syntia = { version = "0.2", default-features = false, features = ["parser"] }
 //! ```
 //!
 //! # Quick start
@@ -67,9 +69,10 @@
 //!
 //! let mut stream = TokenStream::new(tokens);
 //!
-//! let lhs = stream.advance();
+//! // Tokens are Copy — dereference to end the borrow on the stream.
+//! let lhs = *stream.advance();
 //! stream.expect(|t: &Tok| t.kind == Kind::Plus, "`+`").unwrap();
-//! let rhs = stream.advance();
+//! let rhs = *stream.advance();
 //!
 //! // Attach the full expression span to the computed result.
 //! let result = Spanned::new(3_i64, lhs.span().merge(rhs.span()));
@@ -82,12 +85,13 @@
 //! [`render`]: parser::ParseError::render
 //! [`Cursor`]: lexer::Cursor
 //! [`Lex`]: lexer::Lex
+//! [`LexError`]: lexer::LexError
 //! [`TokenStream`]: parser::TokenStream
 //! [`ParseError`]: parser::ParseError
 //! [`Parse`]: parser::Parse
 
 mod span;
-pub use span::{Span, Pos};
+pub use span::{Pos, Span};
 
 mod source;
 pub use source::Source;
@@ -98,6 +102,9 @@ pub use token::Token;
 mod spanned;
 pub use spanned::Spanned;
 
+#[cfg(any(feature = "lexer", feature = "parser"))]
+mod render;
+
 /// Lexer utilities.
 ///
 /// [`Cursor`] walks source text character by character, tracking byte offset,
@@ -107,12 +114,15 @@ pub use spanned::Spanned;
 /// for every lexer you build.
 ///
 /// Implement [`Lex`] on your lexer struct to connect it with the rest of
-/// the library.
+/// the library. Your error type implements [`LexError`] — a span and a
+/// message — and gains diagnostic rendering in the same format as
+/// `ParseError`.
 ///
 /// Enable with the `lexer` Cargo feature (on by default).
 ///
 /// [`Cursor`]: lexer::Cursor
 /// [`Lex`]: lexer::Lex
+/// [`LexError`]: lexer::LexError
 /// [`eat_ident`]: lexer::Cursor::eat_ident
 /// [`eat_digits`]: lexer::Cursor::eat_digits
 /// [`eat_whitespace`]: lexer::Cursor::eat_whitespace
@@ -124,30 +134,31 @@ pub mod lexer;
 /// Parser utilities.
 ///
 /// [`TokenStream`] wraps the token vec from your lexer. Beyond basic
-/// peek/advance, it provides [`many`], [`optional`], and [`separated_by`]
-/// for common parse patterns, and [`try_parse`] for explicit backtracking.
+/// peek/advance, it provides [`many`], [`many1`], [`optional`],
+/// [`separated_by`], and [`separated_by_trailing`] for common parse
+/// patterns, and [`try_parse`] for explicit backtracking.
 ///
 /// [`expect`] takes a label describing what was expected — "expected" is
-/// prepended automatically, so pass `` "`fn`" `` rather than
-/// `"expected `fn`"`.
+/// prepended automatically.
 ///
 /// [`Parse`] is the trait for AST nodes. [`ParseError`] carries span and
-/// context; call [`render`] for a human-readable diagnostic string.
+/// context, and can point at additional spans via [`with_label`]; call
+/// [`render`] for a human-readable diagnostic string.
 ///
 /// Enable with the `parser` Cargo feature (on by default). Does not depend
 /// on the `lexer` feature — you can bring your own lexer.
 ///
 /// [`TokenStream`]: parser::TokenStream
 /// [`many`]: parser::TokenStream::many
+/// [`many1`]: parser::TokenStream::many1
 /// [`optional`]: parser::TokenStream::optional
 /// [`separated_by`]: parser::TokenStream::separated_by
+/// [`separated_by_trailing`]: parser::TokenStream::separated_by_trailing
 /// [`try_parse`]: parser::TokenStream::try_parse
 /// [`expect`]: parser::TokenStream::expect
 /// [`Parse`]: parser::Parse
 /// [`ParseError`]: parser::ParseError
+/// [`with_label`]: parser::ParseError::with_label
 /// [`render`]: parser::ParseError::render
 #[cfg(feature = "parser")]
 pub mod parser;
-
-#[cfg(any(feature = "lexer", feature = "parser"))]
-mod render;
